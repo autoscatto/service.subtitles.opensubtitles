@@ -62,7 +62,7 @@ def list_data(search_data):
                                                                                     item_data["IDSubtitleFile"],
                                                                                     item_data["SubFileName"],
                                                                                     item_data["SubFormat"])
-        l.push((url, listitem))
+        l.append((url, listitem))
     return l
 
 def Search(item):
