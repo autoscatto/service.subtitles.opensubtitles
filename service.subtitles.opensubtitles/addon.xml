@@ -5,6 +5,7 @@
        provider-name="amet">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
+    <import addon="script.common.plugin.cache" version="2.5.5"/> # common cache plugin
   </requires>
   <extension point="xbmc.subtitle.module"
              library="service.py" />
