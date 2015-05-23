@@ -3,5 +3,8 @@
     <category label="32004">
       <setting id="OSuser" type="text" label="32002" default=""/>
       <setting id="OSpass" type="text" option = "hidden" label="32003" default=""/>
-    </category>   
+    </category>
+    <category label="32005">
+      <setting id="OScachetime" type="number" label="32006" default="12"/>
+    </category>
 </settings>

@@ -29,3 +29,11 @@ msgstr ""
 msgctxt "#32004"
 msgid "Login Details"
 msgstr ""
+
+msgctxt "#32005"
+msgid "Cache settings"
+msgstr ""
+
+msgctxt "#32006"
+msgid "Storage time (hours)"
+msgstr ""
