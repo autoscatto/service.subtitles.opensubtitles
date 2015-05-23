@@ -35,5 +35,9 @@ msgid "Cache settings"
 msgstr ""
 
 msgctxt "#32006"
-msgid "Storage time (hours)"
+msgid "Storage time (minutes)"
+msgstr ""
+
+msgctxt "#32007"
+msgid "Storage size (# items)"
 msgstr ""

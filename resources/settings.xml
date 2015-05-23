@@ -5,6 +5,7 @@
       <setting id="OSpass" type="text" option = "hidden" label="32003" default=""/>
     </category>
     <category label="32005">
-      <setting id="OScachetime" type="number" label="32006" default="12"/>
+      <setting id="OScachetime" type="number" label="32006" default="60"/>
+      <setting id="OScachesize" type="number" label="32007" default="20"/>
     </category>
 </settings>

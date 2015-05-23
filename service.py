@@ -6,10 +6,12 @@ import sys
 import urllib
 import xbmc
 import xbmcaddon
-import xbmcgui,xbmcplugin
+import xbmcgui, xbmcplugin
 import xbmcvfs
 import uuid
-
+import json
+import time
+import shelve
 __addon__ = xbmcaddon.Addon()
 __author__     = __addon__.getAddonInfo('author')
 __scriptid__   = __addon__.getAddonInfo('id')
@@ -28,19 +30,19 @@ xbmcvfs.mkdirs(__temp__)
 
 sys.path.append(__resource__)
 
-try:
-    import StorageServer
-except:
-    import storageserverdummy as StorageServer
 
-g_cache = StorageServer.StorageServer("%s" % __scriptname__, __addon__.getSetting("OScachetime"))
+s_path = xbmc.translatePath('special://temp/')
+if not xbmcvfs.exists(s_path.decode('utf8', 'ignore')):
+            xbmcvfs.mkdir(s_path)
 
+s_path = os.path.join(s_path, 'g_dict.shelve')
+g_dict = shelve.open(s_path, writeback=True)
 
 from OSUtilities import OSDBServer, log, hashFile, normalizeString
 
 
-def list_data(search_data):
-    l = []
+
+def search_to_item(search_data):
     for item_data in search_data:
       ## hack to work around issue where Brazilian is not found as language in XBMC
       if item_data["LanguageName"] == "Brazilian":
@@ -62,20 +64,21 @@ def list_data(search_data):
                                                                                     item_data["IDSubtitleFile"],
                                                                                     item_data["SubFileName"],
                                                                                     item_data["SubFormat"])
-        l.append((url, listitem))
-    return l
+      xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=listitem, isFolder=False)
 
-def Search(item):
-  search_data = []
-  try:
-    search_data = OSDBServer().searchsubtitles(item)
-  except:
-    log(__name__, "failed to connect to service for subtitle search")
-    xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32001))).encode('utf-8'))
-    return
 
-  if search_data != None:
-    search_data.sort(key=lambda x: [not x['MatchedBy'] == 'moviehash',
+def list_data(item):
+    item = json.loads(item)
+    search_data = list()
+    try:
+        search_data = OSDBServer().searchsubtitles(item)
+    except:
+        log(__name__, "failed to connect to service for subtitle search")
+        xbmc.executebuiltin((u'Notification(%s,%s)' % (__scriptname__, __language__(32001))).encode('utf-8'))
+        return
+
+    if search_data != None:
+        search_data.sort(key=lambda x: [not x['MatchedBy'] == 'moviehash',
                                     not os.path.splitext(x['SubFileName'])[0] == os.path.splitext(
                                         os.path.basename(urllib.unquote(xbmc.Player().getPlayingFile().decode('utf-8'
                                                                                                               ))))[0],
@@ -83,30 +86,28 @@ def Search(item):
                                                                           )).lower() in x[
                                         'SubFileName'].replace('.', ' ').lower(),
                                     not x['LanguageName'] == PreferredSub])
-    # for item_data in search_data:
-    #   ## hack to work around issue where Brazilian is not found as language in XBMC
-    #   if item_data["LanguageName"] == "Brazilian":
-    #     item_data["LanguageName"] = "Portuguese (Brazil)"
-    #
-    #   if ((item['season'] == item_data['SeriesSeason'] and
-    #       item['episode'] == item_data['SeriesEpisode']) or
-    #           (item['season'] == "" and item['episode'] == "")):
-    #     listitem = xbmcgui.ListItem(label          = item_data["LanguageName"],
-    #                                 label2         = item_data["SubFileName"],
-    #                                 iconImage      = str(int(round(float(item_data["SubRating"])/2))),
-    #                                 thumbnailImage = item_data["ISO639"]
-    #                                 )
-    #
-    #     listitem.setProperty("sync", ("false", "true")[str(item_data["MatchedBy"]) == "moviehash"])
-    #     listitem.setProperty("hearing_imp", ("false", "true")[int(item_data["SubHearingImpaired"]) != 0])
-    #     url = "plugin://%s/?action=download&link=%s&ID=%s&filename=%s&format=%s" % (__scriptid__,
-    #                                                                                 item_data["ZipDownloadLink"],
-    #                                                                                 item_data["IDSubtitleFile"],
-    #                                                                                 item_data["SubFileName"],
-    #                                                                                 item_data["SubFormat"])
-    l = g_cache.cacheFunction(list_data, search_data)
-    for i in l:
-        xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=i[0], listitem=i[1], isFolder=False)
+    return search_data
+
+def Search(item):
+    h_d = json.dumps(item, sort_keys=True)
+    h_i = str(hash(h_d))
+    ret = g_dict.get(h_i, None)
+    if ret is None:
+        l = list_data(h_d)
+        g_dict[h_i] = {"data": l, "time": int(time.time())}
+
+    elif int(time.time()) - ret['time'] >= __addon__.getSetting("OScachetime")*60:
+        l = list_data(h_d)
+        g_dict[h_i] = {"data": l, "time": int(time.time())}
+
+    else:
+        l = ret["data"]
+
+    search_to_item(l)
+    if len(g_dict.keys()) >= __addon__.getSetting("OScachesize"):
+        g_dict.clear()
+    g_dict.close()
+
 
 
 def Download(id, url, format, stack=False):
